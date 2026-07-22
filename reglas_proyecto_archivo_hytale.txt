@@ -1,0 +1,182 @@
+===================================================================
+BASES ARQUITECTÓNICAS - PROYECTO ARCHIVO HISTÓRICO DE HYTALE
+===================================================================
+
+Objetivo: evitar que un proyecto de recolección masiva de datos
+(scraping y archivo) se vuelva un desastre inmanejable en el futuro.
+Separar el sistema en piezas independientes y seguir estas reglas
+desde el día 1.
+
+-------------------------------------------------------------------
+1. DISEÑA UN MODELO DE DATOS ESTRICTO (LA BASE DE DATOS)
+-------------------------------------------------------------------
+Antes de escribir código para descargar cosas, definir cómo se verá
+la información. Nunca guardar los datos de forma desordenada en
+archivos de texto o carpetas sueltas.
+
+Regla del ID único: cada plataforma tiene sus propios IDs
+(CurseForge tiene un Mod ID, Reddit tiene un Post ID). La base de
+datos debe usar esos IDs oficiales como identificadores principales
+para evitar duplicados.
+
+Ejemplo de estructura para un Mod en la Base de Datos:
+  - plataforma_origen: "curseforge"
+  - id_externo: "348291"
+  - titulo: "Better Swords"
+  - autor: "HytaleFan99"
+  - fecha_publicacion: "2026-08-15"
+  - ruta_archivo_local: "/mods/curseforge/348291.zip"
+
+-------------------------------------------------------------------
+2. HAZ QUE TUS SCRIPTS SEAN "IDEMPOTENTES"
+-------------------------------------------------------------------
+Palabra clave en ingeniería de datos. Un script idempotente es
+aquel que puedes ejecutar 1 vez o 100 veces seguidas, y el
+resultado final de la base de datos será exactamente el mismo.
+
+- Mal diseño: el script entra a Reddit y guarda los últimos 10
+  posts. Si lo corres dos veces, tienes 20 posts (10 repetidos).
+- Buen diseño: el script entra a Reddit, lee los últimos 10 posts,
+  y le pregunta a la Base de Datos "¿Ya tienes el post con ID
+  'x7f9a'?". Si la respuesta es sí, lo ignora. Si es no, lo guarda.
+
+Esto salva la vida cuando los scripts fallan a la mitad por un
+corte de internet y hay que volver a arrancarlos.
+
+-------------------------------------------------------------------
+3. SEPARACIÓN TOTAL DE RESPONSABILIDADES
+-------------------------------------------------------------------
+No meter todo en un solo programa gigante. Dividir el proyecto en
+módulos que no dependan directamente el uno del otro:
+
+  1. El Crawler (El Recolector): script (ej. Python) cuya única
+     misión es entrar a internet, buscar nuevos mods/posts,
+     descargarlos y guardarlos en la Base de Datos y Disco Duro.
+     No sabe nada de páginas web ni de cómo se muestra la data.
+  2. La Base de Datos (El Almacén): solo organiza información
+     (textos y fechas) y dice dónde están guardados los .zip.
+  3. La Página Web (El Escaparate): interfaz visual (ej. React,
+     Next.js). Solo lee de la base de datos para mostrarla a los
+     usuarios. No hace descargas directamente de CurseForge.
+
+-------------------------------------------------------------------
+4. UN SISTEMA DE LOGS (BITÁCORA DE ERRORES)
+-------------------------------------------------------------------
+Al descargar miles de archivos, el internet va a fallar.
+CurseForge se va a caer 5 minutos, o un usuario habrá borrado un
+link justo antes de leerlo. Los scripts nunca deben crashear
+(cerrarse abruptamente) por un error. Deben fallar con gracia.
+
+Si un mod no se puede descargar, el script debe:
+  1. Anotar el error en un archivo de texto simple (logs.txt):
+     [ERROR] 2026-07-21 - Falló descarga de mod ID 455 - Error 404
+  2. Ignorar ese mod temporalmente y continuar con el siguiente
+     sin detenerse.
+  3. Al día siguiente, se puede leer ese archivo de "Logs" y ver
+     qué falló, mientras el resto del sistema siguió trabajando
+     perfectamente.
+
+-------------------------------------------------------------------
+5. USÁ LAS APIs OFICIALES ANTES QUE SCRAPING CRUDO
+-------------------------------------------------------------------
+Reddit y CurseForge tienen APIs oficiales. Siempre que exista una
+API:
+  - Es más estable que parsear HTML (que cambia sin aviso).
+  - Da rate limits claros en vez de que te baneen la IP sin
+    explicación.
+  - Es más defendible legalmente que "scrapear" directamente.
+
+Reservar el scraping puro para sitios que de verdad no tengan
+otra opción.
+
+-------------------------------------------------------------------
+6. RATE LIMITING Y "BUEN COMPORTAMIENTO" DE RED
+-------------------------------------------------------------------
+El Crawler necesita:
+  - Delays entre requests (no golpear el servidor 1000 veces por
+    segundo).
+  - Respetar robots.txt.
+  - Un User-Agent identificable (no fingir ser un navegador).
+  - Manejo de HTTP 429 (Too Many Requests) con backoff
+    exponencial.
+
+Esto no es opcional en un archivo histórico a largo plazo: si te
+banean el IP en CurseForge, perdés la fuente completa.
+
+-------------------------------------------------------------------
+7. VERSIONADO DE CONTENIDO, NO SOLO CAPTURA ÚNICA
+-------------------------------------------------------------------
+Un mod se actualiza con el tiempo (v1.0, v1.1, v2.0). Si la DB solo
+guarda "el estado actual", se pierde historia — que es justo el
+objetivo de un archivo histórico. Considerar:
+
+  mod_id: 348291
+  version: "1.2.0"
+  fecha_captura: "2026-07-21"
+  hash_archivo: "sha256:abc123..."
+
+Así se pueden detectar cambios (comparando hash) y guardar cada
+versión como snapshot, no sobrescribir.
+
+-------------------------------------------------------------------
+8. INTEGRIDAD DE ARCHIVOS (CHECKSUMS + BACKUPS)
+-------------------------------------------------------------------
+Para un archivo que pretende durar, cada .zip descargado debería
+guardar su hash (SHA-256) para detectar corrupción con el tiempo, y
+tener backup en al menos 2 ubicaciones (ej. disco local +
+almacenamiento en la nube tipo S3/Backblaze). Un archivo histórico
+que vive en un solo disco no es un archivo, es una apuesta.
+
+-------------------------------------------------------------------
+9. CONSIDERACIONES LEGALES / DE DERECHOS DE AUTOR
+-------------------------------------------------------------------
+Se está archivando contenido creado por terceros (mods, posts).
+Vale la pena definir desde ya:
+  - Una política de "takedown" si un autor pide que se remueva su
+    contenido.
+  - Dejar claro que el archivo preserva metadata + el archivo tal
+    cual fue publicado, no que se reclama propiedad.
+
+No es para asustar, pero mejor pensarlo en el diseño que
+parchearlo después.
+
+-------------------------------------------------------------------
+10. ORQUESTACIÓN
+-------------------------------------------------------------------
+Con múltiples crawlers (Reddit, CurseForge, foros, etc.) se va a
+necesitar algo que los programe y corra (cron, o un scheduler tipo
+APScheduler/Celery en Python) en vez de correrlos a mano. Va de la
+mano con el punto de idempotencia (regla 2).
+
+-------------------------------------------------------------------
+11. UN MOD PUEDE TENER MUCHOS HOTFIXES: UN ARCHIVO POR VERSIÓN
+-------------------------------------------------------------------
+Un mod no es "un solo archivo", es una serie de versiones/hotfixes
+publicados en el tiempo. Cada versión debe guardarse como una
+entidad propia y completa, no sobrescribir la anterior.
+
+Cada versión de un mod debe guardar como mínimo:
+  - mod_id (referencia al mod padre)
+  - numero_version (ej. "1.0", "1.0.1", "1.1")
+  - fecha_publicacion_version
+  - ruta_archivo_local (el .zip propio de ESA versión)
+  - imagen (screenshot o thumbnail asociado a esa versión, ya que
+    la imagen del mod también puede cambiar entre versiones)
+  - hash_archivo (para integridad, ligado a la regla 8)
+
+Ejemplo de estructura:
+  mod_id: 348291
+  version: "1.0.1"
+  fecha_version: "2026-08-20"
+  imagen_version: "/mods/curseforge/348291/1.0.1/cover.png"
+  ruta_archivo_local: "/mods/curseforge/348291/1.0.1/mod.zip"
+  hash_archivo: "sha256:def456..."
+
+Esto conecta directamente con la regla 7 (versionado de contenido):
+en vez de un solo snapshot por hash, el modelo de datos debe
+permitir múltiples versiones "hijas" por cada mod "padre", cada una
+con su propio archivo, fecha e imagen.
+
+===================================================================
+FIN DEL DOCUMENTO
+===================================================================

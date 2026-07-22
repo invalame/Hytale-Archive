@@ -1,0 +1,14 @@
+# Entornos virtuales y dependencias
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Archivos de entorno (API Keys locales)
+.env
+
+# Archivos físicos descargados (Demasiado pesados para GitHub)
+archivo_data/
+
+# Tareas temporales o logs
+*.log

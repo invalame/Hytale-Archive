@@ -1,0 +1,7 @@
+[ERROR] 2026-07-21 05:11:36 - Fallo al descargar /mods/error/download - HTTP 404
+[ERROR] 2026-07-21 05:21:43 - Fallo al descargar /mods/error/download - HTTP 404
+[ERROR] 2026-07-21 05:22:47 - Acceso DENEGADO por robots.txt: /privado
+[ERROR] 2026-07-21 05:27:12 - Access DENIED by robots.txt: /private
+[ERROR] 2026-07-21 06:10:46 - CRITICAL SAFETY STOP! HTTP 403 received on https://api.curseforge.com/v1/games. Waiting at least 1 hour is strongly recommended to avoid permanent IP ban.
+[ERROR] 2026-07-21 06:20:58 - CRITICAL SAFETY STOP! HTTP 403 received on https://api.curseforge.com/v1/games.
+Waiting at least 1 hour is strongly recommended to avoid permanent IP ban.

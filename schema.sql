@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS mod_versions (
     sha256_hash TEXT,
     platform_hash TEXT,
     download_url TEXT,
+    archive_url TEXT,
     FOREIGN KEY(mod_id) REFERENCES mods(mod_id),
     UNIQUE(mod_id, version_number)
 );
@@ -35,5 +36,7 @@ CREATE TABLE IF NOT EXISTS blog_posts (
     html_content TEXT NOT NULL,
     local_image_path TEXT,
     html_sha256_hash TEXT,
-    image_sha256_hash TEXT
+    image_sha256_hash TEXT,
+    archive_url TEXT,
+    UNIQUE(url)
 );

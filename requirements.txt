@@ -1,3 +1,4 @@
-requests
-beautifulsoup4
-python-dotenv
+requests==2.32.3
+beautifulsoup4==4.12.3
+python-dotenv==1.0.1
+internetarchive==4.1.0

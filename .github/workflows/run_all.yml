@@ -37,6 +37,13 @@ jobs:
         run: |
           python run_all.py
 
+      - name: Run Internet Archive Uploader (Phase 6 Physical Files)
+        env:
+          IA_ACCESS_KEY: ${{ secrets.IA_ACCESS_KEY }}
+          IA_SECRET_KEY: ${{ secrets.IA_SECRET_KEY }}
+        run: |
+          python upload_to_archive.py
+
       - name: Record End Time and Calculate Duration
         run: |
           end=$(date +%s)

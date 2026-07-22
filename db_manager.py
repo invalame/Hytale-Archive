@@ -65,5 +65,15 @@ class DBManager:
         self.conn.commit()
         return is_new
 
+    def update_version_archive_url(self, version_id, archive_url):
+        cursor = self.conn.cursor()
+        cursor.execute('UPDATE mod_versions SET archive_url = ? WHERE version_id = ?', (archive_url, version_id))
+        self.conn.commit()
+
+    def update_blog_archive_url(self, post_id, archive_url):
+        cursor = self.conn.cursor()
+        cursor.execute('UPDATE blog_posts SET archive_url = ? WHERE post_id = ?', (archive_url, post_id))
+        self.conn.commit()
+
     def close(self):
         self.conn.close()

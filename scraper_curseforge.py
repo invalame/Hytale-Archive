@@ -116,6 +116,18 @@ class CurseForgeScraper:
                             download_url=dl_url
                         )
 
+                    # Save enriched metadata: description_short, logo, screenshots
+                    import json as _json
+                    desc_short = mod.get('summary')
+                    logo_url   = mod.get('logo', {}).get('url') if mod.get('logo') else None
+                    self.db.update_mod_metadata(mod_id, description_short=desc_short, logo_url=logo_url)
+
+                    # Insert each screenshot into mod_screenshots (idempotent via UNIQUE constraint)
+                    for order, shot in enumerate(mod.get('screenshots', [])):
+                        shot_url = shot.get('url')
+                        if shot_url:
+                            self.db.insert_or_ignore_screenshot(mod_id, shot_url, order)
+
                 if is_new:
                     stats["new"] += 1
                 else:

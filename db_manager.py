@@ -28,6 +28,23 @@ class DBManager:
         row = cursor.fetchone()
         return row['mod_id'] if row else None, is_new
 
+    def update_mod_metadata(self, mod_id, description_short=None, logo_url=None):
+        """Update non-version metadata for a mod (description_short, logo_url)."""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            'UPDATE mods SET summary=?, logo_url=? WHERE mod_id=?',
+            (description_short, logo_url, mod_id)
+        )
+        self.conn.commit()
+
+    def insert_or_ignore_screenshot(self, mod_id, screenshot_url, display_order):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            'INSERT OR IGNORE INTO mod_screenshots (mod_id, screenshot_url, display_order) VALUES (?, ?, ?)',
+            (mod_id, screenshot_url, display_order)
+        )
+        self.conn.commit()
+
     def insert_or_ignore_version(self, mod_id, version_number, published_at, file_path, image_path, sha256_hash, platform_hash=None, download_url=None):
         cursor = self.conn.cursor()
         cursor.execute('''
@@ -65,14 +82,34 @@ class DBManager:
         self.conn.commit()
         return is_new
 
-    def update_version_archive_url(self, version_id, archive_url):
+    def update_version_archive_url(self, version_id, archive_url, status='complete'):
+        """Update the archive URL and status for a specific mod version."""
         cursor = self.conn.cursor()
-        cursor.execute('UPDATE mod_versions SET archive_url = ? WHERE version_id = ?', (archive_url, version_id))
+        cursor.execute('''
+            UPDATE mod_versions
+            SET archive_url = ?, upload_status = ?
+            WHERE version_id = ?
+        ''', (archive_url, status, version_id))
+        self.conn.commit()
+            
+    def update_version_upload_status(self, version_id, status):
+        cursor = self.conn.cursor()
+        cursor.execute('UPDATE mod_versions SET upload_status = ? WHERE version_id = ?', (status, version_id))
         self.conn.commit()
 
-    def update_blog_archive_url(self, post_id, archive_url):
+    def update_blog_archive_url(self, post_id, archive_url, status='complete'):
+        """Update the archive URL and status for a blog post."""
         cursor = self.conn.cursor()
-        cursor.execute('UPDATE blog_posts SET archive_url = ? WHERE post_id = ?', (archive_url, post_id))
+        cursor.execute('''
+            UPDATE blog_posts
+            SET archive_url = ?, upload_status = ?
+            WHERE post_id = ?
+        ''', (archive_url, status, post_id))
+        self.conn.commit()
+
+    def update_blog_upload_status(self, post_id, status):
+        cursor = self.conn.cursor()
+        cursor.execute('UPDATE blog_posts SET upload_status = ? WHERE post_id = ?', (status, post_id))
         self.conn.commit()
 
     def close(self):

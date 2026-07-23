@@ -7,6 +7,10 @@ CREATE TABLE IF NOT EXISTS mods (
     external_id TEXT NOT NULL,
     title TEXT NOT NULL,
     author TEXT NOT NULL,
+    summary TEXT,
+    description TEXT,
+    logo_url TEXT,
+    screenshots_json TEXT,
     -- Rule 1 & Database level idempotency
     UNIQUE(platform, external_id)
 );
@@ -22,7 +26,8 @@ CREATE TABLE IF NOT EXISTS mod_versions (
     platform_hash TEXT,
     download_url TEXT,
     archive_url TEXT,
-    FOREIGN KEY(mod_id) REFERENCES mods(mod_id),
+    upload_status TEXT DEFAULT 'pending',
+    FOREIGN KEY(mod_id) REFERENCES mods(mod_id) ON DELETE CASCADE,
     UNIQUE(mod_id, version_number)
 );
 
@@ -38,5 +43,15 @@ CREATE TABLE IF NOT EXISTS blog_posts (
     html_sha256_hash TEXT,
     image_sha256_hash TEXT,
     archive_url TEXT,
+    upload_status TEXT DEFAULT 'pending',
     UNIQUE(url)
+);
+
+CREATE TABLE IF NOT EXISTS mod_screenshots (
+    screenshot_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    mod_id INTEGER NOT NULL,
+    screenshot_url TEXT NOT NULL,
+    display_order INTEGER NOT NULL,
+    FOREIGN KEY(mod_id) REFERENCES mods(mod_id) ON DELETE CASCADE,
+    UNIQUE(mod_id, screenshot_url)
 );

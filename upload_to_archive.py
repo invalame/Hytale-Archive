@@ -29,10 +29,11 @@ IA_SECRET_KEY = os.environ.get('IA_SECRET_KEY')
 USER_AGENT    = "HytaleArchiveBot/1.0 (Contact: pemaidana0@gmail.com)"
 
 # ---------------------------------------------------------------------------
-# BATCH_SIZE_PER_RUN: Max number of items to upload per corrida.
-# With 10s/file and ~3 files/mod average, 200 mods ≈ 100 min.
-# Set to None to process everything in one run (not recommended on GitHub Actions).
-BATCH_SIZE_PER_RUN = 200
+# Max number of items to upload per corrida.
+# Mod batches: ~1.6 hours for 200 mods.
+# Blog batches: ~1.3 hours for 30 blogs (assuming many images).
+BATCH_SIZE_MODS = 200
+BATCH_SIZE_BLOG = 30
 # ---------------------------------------------------------------------------
 
 # We MUST have a delay between individual files within the same Item
@@ -156,7 +157,7 @@ def process_curseforge():
     """).fetchall()
 
     total_pending   = len(rows)
-    batch_limit     = BATCH_SIZE_PER_RUN if BATCH_SIZE_PER_RUN else total_pending
+    batch_limit     = BATCH_SIZE_MODS if BATCH_SIZE_MODS else total_pending
     rows_to_process = rows[:batch_limit]
     print(f"Total pending: {total_pending} | This batch: {len(rows_to_process)}\n")
 
@@ -275,7 +276,7 @@ def process_blog_posts():
     conn.close()
 
     total_pending    = len(posts)
-    batch_limit      = BATCH_SIZE_PER_RUN if BATCH_SIZE_PER_RUN else total_pending
+    batch_limit      = BATCH_SIZE_BLOG if BATCH_SIZE_BLOG else total_pending
     posts_to_process = posts[:batch_limit]
     print(f"Total pending: {total_pending} | This batch: {len(posts_to_process)}\n")
 
@@ -371,8 +372,8 @@ def main():
         print("ERROR: IA_ACCESS_KEY and IA_SECRET_KEY environment variables are required.")
         sys.exit(1)
 
-    limit_msg = (f"TEST MODE — capped at {MAX_UPLOADS_TEST} per category"
-                 if MAX_UPLOADS_TEST else "FULL RUN — uploading everything")
+    limit_msg = (f"BATCH MODE — {BATCH_SIZE_MODS} mods, {BATCH_SIZE_BLOG} blogs"
+                 if (BATCH_SIZE_MODS or BATCH_SIZE_BLOG) else "FULL RUN — uploading everything")
 
     print("==========================================")
     print(f"Internet Archive Uploader — {limit_msg}")
@@ -387,8 +388,8 @@ def main():
     print("==========================================")
     print(f"  CurseForge:  {cf_ok} uploaded, {cf_fail} failed")
     print(f"  Blog images: {blog_ok} uploaded, {blog_fail} failed")
-    if BATCH_SIZE_PER_RUN:
-        print(f"\n  Batch mode active: BATCH_SIZE_PER_RUN = {BATCH_SIZE_PER_RUN}")
+    if BATCH_SIZE_MODS or BATCH_SIZE_BLOG:
+        print(f"\n  Batch mode active: Mods={BATCH_SIZE_MODS}, Blogs={BATCH_SIZE_BLOG}")
         print(f"  Run again to continue uploading the remaining items.")
     print("==========================================")
 

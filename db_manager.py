@@ -112,5 +112,48 @@ class DBManager:
         cursor.execute('UPDATE blog_posts SET upload_status = ? WHERE post_id = ?', (status, post_id))
         self.conn.commit()
 
+    # --- Reddit Methods ---
+    
+    def insert_or_update_reddit_post(self, subreddit, reddit_id, author, title, url, score, published_at, content_html, media_url, media_local_path=None):
+        cursor = self.conn.cursor()
+        # Try to insert
+        cursor.execute('''
+            INSERT OR IGNORE INTO reddit_posts (subreddit, reddit_id, author, title, url, score, published_at, content_html, media_url, media_local_path)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (subreddit, reddit_id, author, title, url, score, published_at, content_html, media_url, media_local_path))
+        
+        is_new = cursor.rowcount > 0
+        
+        # If not new, we update the score and content_html (since self-text can be edited)
+        if not is_new:
+            cursor.execute('''
+                UPDATE reddit_posts SET score = ?, content_html = ?
+                WHERE reddit_id = ?
+            ''', (score, content_html, reddit_id))
+            
+        self.conn.commit()
+        
+        cursor.execute('SELECT post_id FROM reddit_posts WHERE reddit_id = ?', (reddit_id,))
+        row = cursor.fetchone()
+        return row['post_id'] if row else None, is_new
+
+    def insert_or_update_reddit_comment(self, post_id, reddit_id, parent_id, author, score, published_at, content_html):
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            INSERT OR IGNORE INTO reddit_comments (post_id, reddit_id, parent_id, author, score, published_at, content_html)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (post_id, reddit_id, parent_id, author, score, published_at, content_html))
+        
+        is_new = cursor.rowcount > 0
+        
+        if not is_new:
+            cursor.execute('''
+                UPDATE reddit_comments SET score = ?, content_html = ?, is_new = 0
+                WHERE reddit_id = ?
+            ''', (score, content_html, reddit_id))
+            
+        self.conn.commit()
+        return is_new
+
     def close(self):
         self.conn.close()

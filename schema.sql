@@ -55,3 +55,32 @@ CREATE TABLE IF NOT EXISTS mod_screenshots (
     FOREIGN KEY(mod_id) REFERENCES mods(mod_id) ON DELETE CASCADE,
     UNIQUE(mod_id, screenshot_url)
 );
+
+CREATE TABLE IF NOT EXISTS reddit_posts (
+    post_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subreddit TEXT NOT NULL,
+    reddit_id TEXT NOT NULL UNIQUE,
+    author TEXT NOT NULL,
+    title TEXT NOT NULL,
+    url TEXT NOT NULL,
+    score INTEGER DEFAULT 0,
+    published_at TEXT NOT NULL,
+    content_html TEXT,
+    media_url TEXT,
+    media_local_path TEXT,
+    archive_url TEXT,
+    upload_status TEXT DEFAULT 'pending'
+);
+
+CREATE TABLE IF NOT EXISTS reddit_comments (
+    comment_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    reddit_id TEXT NOT NULL UNIQUE,
+    parent_id TEXT,
+    author TEXT NOT NULL,
+    score INTEGER DEFAULT 0,
+    published_at TEXT NOT NULL,
+    content_html TEXT,
+    is_new INTEGER DEFAULT 1,
+    FOREIGN KEY(post_id) REFERENCES reddit_posts(post_id) ON DELETE CASCADE
+);

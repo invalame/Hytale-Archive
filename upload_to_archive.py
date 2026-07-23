@@ -30,17 +30,17 @@ USER_AGENT    = "HytaleArchiveBot/1.0 (Contact: pemaidana0@gmail.com)"
 
 # ---------------------------------------------------------------------------
 # Max number of items to upload per corrida.
-# Mod batches: ~1.6 hours for 200 mods.
+# Mod batches: ~1.6 hours for 200 mods. For a NEW account, start with 50.
 # Blog batches: ~1.3 hours for 30 blogs (assuming many images).
-BATCH_SIZE_MODS = 200
-BATCH_SIZE_BLOG = 30
+BATCH_SIZE_MODS = 50
+BATCH_SIZE_BLOG = 15
 # ---------------------------------------------------------------------------
 
 # We MUST have a delay between individual files within the same Item
 # otherwise the IA API triggers the "spam" 503 error for new accounts.
-IA_DELAY_BETWEEN_FILES_S = 10    
-IA_DELAY_BETWEEN_ITEMS_S = 10    
-SLOW_DOWN_PAUSE_S        = 60   
+IA_DELAY_BETWEEN_FILES_S = 15    
+IA_DELAY_BETWEEN_ITEMS_S = 30    
+SLOW_DOWN_PAUSE_S        = 120   
 MAX_503_RETRIES          = 3    
 CIRCUIT_BREAKER_LIMIT    = 5    
 
@@ -110,7 +110,9 @@ def _upload_files_to_item(identifier, files_dict, metadata):
     consecutive_503s = 0
 
     for i, (file_name, file_path) in enumerate(files_dict.items()):
-        is_first = (i == 0)
+        # Pass metadata to create the item AT LEAST until one file succeeds.
+        # If the first file fails, we must pass metadata on the second try.
+        is_first = (uploaded == 0)
         
         # Mandatory delay between files to avoid IA spam filter
         if i > 0:
